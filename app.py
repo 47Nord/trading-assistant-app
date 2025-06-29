@@ -86,7 +86,7 @@ st.subheader("🔍 ETH (Crypto) and AAPL (Stock) Analysis")
 
 if st.button("Run ETH & AAPL Analysis"):
     with st.spinner("Fetching and analyzing data..."):
-        crypto_symbol = "BITSTAMP_SPOT_ETH_USD"
+        crypto_symbol = "BINANCE_SPOT_ETH_USDT"
         stock_symbol = "AAPL"
 
         crypto_df = fetch_crypto_data(crypto_symbol)
