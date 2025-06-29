@@ -30,13 +30,26 @@ def fetch_top_stocks_free():
     stocks = response.json()
     return [stock['symbol'] for stock in stocks if 'symbol' in stock][:100]
 
-crypto_list = fetch_top_100_crypto()
-stock_list = fetch_top_stocks_free()
+@st.cache_data
+def validate_symbol(symbol):
+    try:
+        df = yf.download(symbol, period="2d", interval="1h")
+        return not df.empty and "Close" in df.columns
+    except:
+        return False
+
+raw_crypto = fetch_top_100_crypto()
+raw_stocks = fetch_top_stocks_free()
+
+crypto_list = [s for s in raw_crypto if validate_symbol(s)]
+stock_list = [s for s in raw_stocks if validate_symbol(s)]
 
 @st.cache_data
 def load_data(symbol):
     try:
-        data = yf.download(symbol, period="60d", interval="1h")
+        data = yf.download(symbol, period="2d", interval="1h")
+        if 'Close' not in data.columns:
+            return pd.DataFrame()
         data['EMA20'] = data['Close'].ewm(span=20, adjust=False).mean()
         data['RSI'] = 100 - (100 / (1 + data['Close'].pct_change().rolling(window=14).mean() / data['Close'].pct_change().rolling(window=14).std()))
         data['BB_Middle'] = data['Close'].rolling(window=20).mean()
@@ -91,7 +104,7 @@ def analyze_top_setups(symbols):
     results = []
     for symbol in symbols:
         data = load_data(symbol)
-        if data.empty or len(data) < 50:
+        if data.empty or len(data) < 10:
             continue
         ohlc_input = data.tail(50).reset_index().to_dict(orient="records")
         analysis = ask_gpt_for_pattern(symbol, ohlc_input)
@@ -131,9 +144,32 @@ selected_symbol = st.selectbox("Select Asset", symbols)
 data = load_data(selected_symbol)
 
 st.subheader(f"📉 Chart: {selected_symbol}")
-if 'Close' not in data.columns:
-    st.warning("No 'Close' price data available. This asset may not be supported or data is temporarily unavailable.")
+if data.empty:
+    st.warning("No recent hourly data found. This asset may be unsupported or temporarily unavailable.")
+else:
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(data.index, data['Close'], label="Close Price", linewidth=1.5)
+    if 'EMA20' in data.columns:
+        ax.plot(data.index, data['EMA20'], label="EMA 20", linestyle='--', alpha=0.7)
+    if 'BB_Lower' in data.columns and 'BB_Upper' in data.columns:
+        ax.fill_between(data.index, data['BB_Lower'], data['BB_Upper'], color='gray', alpha=0.1, label="Bollinger Bands")
 
-# Safety fallback in case none of the above renders
+    if len(data) >= 50:
+        pattern_zone = data.tail(50)
+        ax.axvspan(pattern_zone.index[0], pattern_zone.index[-1], color='yellow', alpha=0.1, label='Pattern Zone')
+
+    ax.set_title(f"{selected_symbol} - Last 48h (1h candles)")
+    ax.legend()
+    st.pyplot(fig)
+
+    img_path = f"{selected_symbol}_chart.png"
+    fig.savefig(img_path)
+    st.download_button("📥 Download Chart Image", open(img_path, "rb"), file_name=img_path)
+
+    ohlc_input = data.tail(50).reset_index().to_dict(orient="records")
+    if st.button("🔎 Analyze This Asset"):
+        analysis_result = ask_gpt_for_pattern(selected_symbol, ohlc_input)
+        st.text_area("📊 Pattern & Momentum Detection", analysis_result, height=300)
+
 if data.empty:
     st.warning("No data found for this symbol.")
