@@ -8,37 +8,9 @@ from datetime import datetime
 
 # --- Config ---
 st.set_page_config(page_title="📊 AI Trading Assistant", layout="wide")
-st.title("📈 AI Momentum & Pattern Screener")
+st.title("📈 Analyze ETH and AAPL")
 
 client = openai.OpenAI(api_key=st.secrets.get("openai_api_key", "your-openai-key-here"))
-
-@st.cache_data
-def fetch_top_100_crypto():
-    url = "https://api.coingecko.com/api/v3/coins/markets"
-    params = {"vs_currency": "usd", "order": "market_cap_desc", "per_page": 100, "page": 1}
-    response = requests.get(url, params=params)
-    coins = response.json()
-    return [coin['id'] for coin in coins]
-
-@st.cache_data
-def fetch_top_stocks_free():
-    fmp_api_key = "HDWZ0wWqWSQ2eFbafEAzxTPk7UbO0Oaw"
-    url = f"https://financialmodelingprep.com/api/v3/stock_market/actives?apikey={fmp_api_key}"
-    response = requests.get(url)
-    stocks = response.json()
-    return [stock['symbol'] for stock in stocks if 'symbol' in stock][:100]
-
-@st.cache_data
-def validate_symbol(symbol):
-    try:
-        df = yf.download(symbol, period="2d", interval="1h")
-        return not df.empty and "Close" in df.columns
-    except:
-        return False
-
-raw_crypto = fetch_top_100_crypto()
-raw_stocks = fetch_top_stocks_free()
-stock_list = [s for s in raw_stocks if validate_symbol(s)]
 
 @st.cache_data
 def fetch_crypto_data(symbol_id):
@@ -51,31 +23,14 @@ def fetch_crypto_data(symbol_id):
     df = pd.DataFrame(prices, columns=["timestamp", "Close"])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     df.set_index('timestamp', inplace=True)
-    df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
-    df['RSI'] = 100 - (100 / (1 + df['Close'].pct_change().rolling(window=14).mean() / df['Close'].pct_change().rolling(window=14).std()))
-    df['BB_Middle'] = df['Close'].rolling(window=20).mean()
-    df['BB_Upper'] = df['BB_Middle'] + 2 * df['Close'].rolling(window=20).std()
-    df['BB_Lower'] = df['BB_Middle'] - 2 * df['Close'].rolling(window=20).std()
-    return df.dropna()
+    return df
 
 @st.cache_data
-def load_data(symbol):
-    for period, interval in [("2d", "1h"), ("5d", "1h"), ("1d", "30m")]:
-        try:
-            data = yf.download(symbol, period=period, interval=interval)
-            if data.empty or 'Close' not in data.columns:
-                continue
-            data['EMA20'] = data['Close'].ewm(span=20, adjust=False).mean()
-            data['RSI'] = 100 - (100 / (1 + data['Close'].pct_change().rolling(window=14).mean() / data['Close'].pct_change().rolling(window=14).std()))
-            data['BB_Middle'] = data['Close'].rolling(window=20).mean()
-            data['BB_Upper'] = data['BB_Middle'] + 2 * data['Close'].rolling(window=20).std()
-            data['BB_Lower'] = data['BB_Middle'] - 2 * data['Close'].rolling(window=20).std()
-            return data.dropna()
-        except:
-            continue
-    return pd.DataFrame()
-
-analysis_log = []
+def load_stock_data(symbol):
+    data = yf.download(symbol, period="2d", interval="1h")
+    if data.empty or 'Close' not in data.columns:
+        return pd.DataFrame()
+    return data
 
 def ask_gpt_for_pattern(symbol, ohlc_data):
     prompt = f"""
@@ -91,7 +46,7 @@ def ask_gpt_for_pattern(symbol, ohlc_data):
     - 📌 Pattern name (if found)
     - 📈 Probability of pattern success (0–100%)
     - 📊 Momentum assessment
-    - 🎯 Entry level
+    - 🌟 Entry level
     - 🛡️ Stop loss level
     - 💰 Take profit 1, 2, and 3 targets (TP1/TP2/TP3)
 
@@ -110,8 +65,36 @@ def ask_gpt_for_pattern(symbol, ohlc_data):
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
-        result = response.choices[0].message.content
-        analysis_log.append({"symbol": symbol, "timestamp": datetime.utcnow(), "result": result})
-        return result
+        return response.choices[0].message.content
     except Exception as e:
         return f"Error: {e}"
+
+# --- Analysis ---
+st.subheader("🔍 ETH (Crypto) and AAPL (Stock) Analysis")
+
+if st.button("Run ETH & AAPL Analysis"):
+    with st.spinner("Fetching and analyzing data..."):
+        crypto_id = "ethereum"
+        stock_symbol = "AAPL"
+
+        crypto_df = fetch_crypto_data(crypto_id)
+        stock_df = load_stock_data(stock_symbol)
+
+        if crypto_df.empty:
+            st.error(f"No data for crypto: {crypto_id}")
+        else:
+            st.markdown(f"### 📊 {crypto_id.title()} Analysis")
+            crypto_input = crypto_df.tail(50).reset_index().to_dict(orient="records")
+            result = ask_gpt_for_pattern(crypto_id, crypto_input)
+            st.text_area("ETH Analysis Result", result, height=300)
+
+        if stock_df.empty:
+            st.error(f"No data for stock: {stock_symbol}")
+        else:
+            st.markdown(f"### 📈 {stock_symbol.upper()} Analysis")
+            stock_input = stock_df.tail(50).reset_index().to_dict(orient="records")
+            result = ask_gpt_for_pattern(stock_symbol, stock_input)
+            st.text_area("AAPL Analysis Result", result, height=300)
+
+st.markdown("---")
+st.caption("Note: This demo focuses on ETH and AAPL only to reduce API cost and improve performance.")
