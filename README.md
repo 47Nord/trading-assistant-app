@@ -1,11 +1,11 @@
-# AI Trading Assistant App
+# AI Trading Assistant App with GPT-4o Integration
 
-## How to Run
+## Run Locally
 
 1. Unzip the folder
-2. Open terminal and navigate to folder
-3. Run:
+2. Install dependencies:
    pip install -r requirements.txt
+3. Run the app:
    streamlit run app.py
 
-Enjoy the assistant in your browser!
+✅ Make sure your `.streamlit/secrets.toml` file contains your OpenAI API key
