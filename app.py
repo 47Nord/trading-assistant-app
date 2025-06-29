@@ -15,12 +15,12 @@ client = openai.OpenAI(api_key=st.secrets.get("openai_api_key", "your-openai-key
 COINAPI_KEY = st.secrets["coinapi_key"]
 
 @st.cache_data
-def fetch_crypto_data(symbol_id):
+def fetch_crypto_data(symbol_id, timeframe="1HRS"):
     url = f"https://rest.coinapi.io/v1/ohlcv/{symbol_id}/history"
     end_time = datetime.utcnow()
     start_time = end_time - timedelta(days=2)
     params = {
-        "period_id": "1HRS",
+        "period_id": timeframe,
         "time_start": start_time.strftime('%Y-%m-%dT%H:%M:%S'),
         "limit": 48
     }
@@ -79,6 +79,8 @@ def plot_pattern_chart(df, symbol):
 
 st.subheader("🔍 Market-wide Top Trade Recommendations")
 
+timeframe = st.selectbox("Select timeframe for analysis", ["1HRS", "30MIN", "15MIN", "4HRS", "1DAY"], index=0)
+
 if st.button("📈 Analyze Top 100 Crypto & Stocks"):
     with st.spinner("Fetching and analyzing..."):
         crypto_symbols = [
@@ -94,7 +96,7 @@ if st.button("📈 Analyze Top 100 Crypto & Stocks"):
         df_lookup = {}
 
         for sym in crypto_symbols:
-            df = fetch_crypto_data(sym)
+            df = fetch_crypto_data(sym, timeframe)
             if not df.empty:
                 crypto_data_all[sym] = df.tail(48).reset_index().to_dict(orient="records")
                 df_lookup[sym] = df
