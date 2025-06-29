@@ -1,11 +1,7 @@
-# AI Trading Assistant App
+# AI Momentum & Pattern Screener
 
-## How to Deploy on Streamlit Cloud
-1. Upload this folder to GitHub
-2. Go to https://streamlit.io/cloud and click 'New App'
-3. Connect your GitHub and select the repo
-4. Set main file to `app.py`
-5. Add your API key in Secrets like this:
-```
-openai_api_key = "sk-..."
-```
+## Deploy Instructions (Streamlit Cloud)
+1. Upload this folder to a GitHub repo.
+2. Visit https://streamlit.io/cloud and connect your repo.
+3. Set the main file as `app.py`.
+4. Set `openai_api_key` in `.streamlit/secrets.toml` or through Streamlit Cloud Secrets UI.
