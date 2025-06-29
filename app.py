@@ -1,3 +1,4 @@
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -131,28 +132,30 @@ selected_symbol = st.selectbox("Select Asset", symbols)
 data = load_data(selected_symbol)
 
 st.subheader(f"📉 Chart: {selected_symbol}")
-fig, ax = plt.subplots(figsize=(10, 4))
-ax.plot(data.index, data['Close'], label="Close Price", linewidth=1.5)
-if 'EMA20' in data.columns:
-    ax.plot(data.index, data['EMA20'], label="EMA 20", linestyle='--', alpha=0.7)
-if 'BB_Lower' in data.columns and 'BB_Upper' in data.columns:
-    ax.fill_between(data.index, data['BB_Lower'], data['BB_Upper'], color='gray', alpha=0.1, label="Bollinger Bands")
+if 'Close' not in data.columns:
+    st.warning("No 'Close' price data available. This asset may not be supported or data is temporarily unavailable.")
+else:
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(data.index, data['Close'], label="Close Price", linewidth=1.5)
+    if 'EMA20' in data.columns:
+        ax.plot(data.index, data['EMA20'], label="EMA 20", linestyle='--', alpha=0.7)
+    if 'BB_Lower' in data.columns and 'BB_Upper' in data.columns:
+        ax.fill_between(data.index, data['BB_Lower'], data['BB_Upper'], color='gray', alpha=0.1, label="Bollinger Bands")
 
-# Highlight the last 50 candles (pattern zone)
-if len(data) >= 50:
-    pattern_zone = data.tail(50)
-    ax.axvspan(pattern_zone.index[0], pattern_zone.index[-1], color='yellow', alpha=0.1, label='Pattern Zone')
+    # Highlight the last 50 candles (pattern zone)
+    if len(data) >= 50:
+        pattern_zone = data.tail(50)
+        ax.axvspan(pattern_zone.index[0], pattern_zone.index[-1], color='yellow', alpha=0.1, label='Pattern Zone')
 
-ax.set_title(f"{selected_symbol} - Last 60 Days")
-ax.legend()
-st.pyplot(fig)
+    ax.set_title(f"{selected_symbol} - Last 60 Days")
+    ax.legend()
+    st.pyplot(fig)
 
-# Export chart as image
-img_path = f"{selected_symbol}_chart.png"
-fig.savefig(img_path)
-st.download_button("📥 Download Chart Image", open(img_path, "rb"), file_name=img_path)
+    # Export chart as image
+    img_path = f"{selected_symbol}_chart.png"
+    fig.savefig(img_path)
+    st.download_button("📥 Download Chart Image", open(img_path, "rb"), file_name=img_path)
 
-if not data.empty:
     ohlc_input = data.tail(50).reset_index().to_dict(orient="records")
     if st.button("🔎 Analyze This Asset"):
         analysis_result = ask_gpt_for_pattern(selected_symbol, ohlc_input)
