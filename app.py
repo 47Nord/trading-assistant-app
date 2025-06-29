@@ -105,7 +105,6 @@ if st.button("📈 Analyze Top 100 Crypto & Stocks"):
                 stock_data_all[sym] = df.tail(48).reset_index().to_dict(orient="records")
                 df_lookup[sym] = df
 
-        # Batching into 4 groups (25 each) for GPT
         all_batches = []
         for i in range(0, 100, 25):
             c_batch = dict(list(crypto_data_all.items())[i:i+25])
@@ -113,9 +112,7 @@ if st.button("📈 Analyze Top 100 Crypto & Stocks"):
             result = ask_gpt_batch(c_batch, s_batch)
             all_batches.append(result)
 
-        full_result = "
-
-".join(all_batches)
+        full_result = "\n\n".join(all_batches)
         st.text_area("📋 GPT-4o Trade Ideas", full_result, height=400)
 
         st.markdown("---")
@@ -124,12 +121,10 @@ if st.button("📈 Analyze Top 100 Crypto & Stocks"):
         top_matches = []
         for result in all_batches:
             for line in result.splitlines():
-                if any(sym in line for sym in df_lookup.keys()):
-                    parts = line.split()
-                    if parts:
-                        symbol = parts[0]
-                        if symbol in df_lookup:
-                            top_matches.append(symbol)
+                for sym in df_lookup.keys():
+                    if sym in line:
+                        top_matches.append(sym)
+                        break
             if len(top_matches) >= 6:
                 break
 
