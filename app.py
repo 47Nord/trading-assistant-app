@@ -1,4 +1,3 @@
-
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -45,9 +44,9 @@ def load_data(symbol):
         return pd.DataFrame()
 
 # --- GPT-4o Pattern Detector ---
-def ask_gpt_for_pattern(ohlc_data):
+def ask_gpt_for_pattern(symbol, ohlc_data):
     prompt = f"""
-    Analyze the following OHLC chart data and detect known chart patterns (cup and handle, double bottom, etc.).
+    Analyze the following OHLC chart data for the symbol {symbol} and detect known chart patterns (cup and handle, double bottom, etc.).
     Respond with the pattern name, confidence level (1-100%), and a trade suggestion (entry, stop loss, take profit).
 
     OHLC Data:
@@ -61,6 +60,29 @@ def ask_gpt_for_pattern(ohlc_data):
         return response.choices[0].message.content
     except Exception as e:
         return f"Error: {e}"
+
+# --- Top 5 Trade Setups Analyzer ---
+def analyze_top_setups(symbols):
+    results = []
+    for symbol in symbols:
+        data = load_data(symbol)
+        if data.empty or len(data) < 50:
+            continue
+        ohlc_input = data.tail(50).reset_index().to_dict(orient="records")
+        analysis = ask_gpt_for_pattern(symbol, ohlc_input)
+        results.append((symbol, analysis))
+        if len(results) >= 5:
+            break
+    return results
+
+# --- UI: Top 5 Setups ---
+st.subheader("🚀 Top 5 Trade Setups Right Now")
+if st.button("Find Best Setups Now"):
+    top_assets = crypto_list[:10] + stock_list[:10]  # Analyze 20 assets to find top 5
+    setups = analyze_top_setups(top_assets)
+    for symbol, analysis in setups:
+        st.markdown(f"### {symbol}")
+        st.text_area("Pattern Analysis", analysis, height=250)
 
 # --- Manual Asset Analysis ---
 st.subheader("🔍 Check a Specific Asset")
@@ -76,7 +98,7 @@ st.line_chart(data['Close'])
 if not data.empty:
     ohlc_input = data.tail(50).reset_index().to_dict(orient="records")
     if st.button("🔎 Let GPT-4o Analyze the Pattern"):
-        analysis_result = ask_gpt_for_pattern(ohlc_input)
+        analysis_result = ask_gpt_for_pattern(selected_symbol, ohlc_input)
         st.text_area("📊 GPT-4o Pattern Detection Result", analysis_result, height=300)
 else:
     st.warning("No data found for this symbol.")

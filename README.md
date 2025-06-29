@@ -1,10 +1,11 @@
-# AI Trading Assistant App (GPT-4o)
+# AI Trading Assistant App
 
-## How to Run Locally
-
-1. Unzip the folder
-2. Add your OpenAI API key to `.streamlit/secrets.toml`
-3. Install dependencies:
-   pip install -r requirements.txt
-4. Run the app:
-   streamlit run app.py
+## How to Deploy on Streamlit Cloud
+1. Upload this folder to GitHub
+2. Go to https://streamlit.io/cloud and click 'New App'
+3. Connect your GitHub and select the repo
+4. Set main file to `app.py`
+5. Add your API key in Secrets like this:
+```
+openai_api_key = "sk-..."
+```
