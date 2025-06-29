@@ -1,3 +1,4 @@
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -10,7 +11,8 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="📊 AI Trading Assistant", layout="wide")
 st.title("📈 AI-Powered Trading Assistant")
 
-openai.api_key = st.secrets.get("openai_api_key", "your-openai-key-here")
+# Create OpenAI client using API key
+client = openai.OpenAI(api_key=st.secrets.get("openai_api_key", "your-openai-key-here"))
 
 # --- Fetch top 100 crypto from CoinGecko ---
 @st.cache_data
@@ -52,7 +54,6 @@ def ask_gpt_for_pattern(ohlc_data):
     {ohlc_data}
     """
     try:
-        client = openai.OpenAI()
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
