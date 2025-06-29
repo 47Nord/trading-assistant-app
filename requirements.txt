@@ -1,6 +1,6 @@
 streamlit
-openai
 yfinance
 pandas
 matplotlib
+openai
 requests
